@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <iostream>
 
+#include <fstream> //load file
+#include <string>
+//#include "stdafx.h"
+#include <algorithm>
+
 // used for standard input and output, specifically the printf() function
 #include <stdio.h>
 
@@ -18,12 +23,48 @@
 #define DEFAULT_BUFLEN 512
 #define DEFAULT_PORT "27015"
 
+using namespace std;
+
+void load_client_config(string configName, int* client_num)
+{
+	ifstream in;
+	string str;
+
+	in.open(configName);
+
+	while (!in.eof())
+	{
+		while (getline(in, str))
+		{
+			string::size_type begin = str.find_first_not_of(" \f\t\v");
+			//Skips black lines
+			if (begin == string::npos)
+				continue;
+			string firstWord;
+			try {
+				firstWord = str.substr(0, str.find(" "));
+			}
+			catch (std::exception &e) {
+				firstWord = str.erase(str.find_first_of(" "), str.find_first_not_of(" "));
+			}
+			transform(firstWord.begin(), firstWord.end(), firstWord.begin(), ::toupper);
+
+			if (firstWord == "CLIENT_NUMBER")
+				*client_num = stoi(str.substr(str.find(" ") + 1, str.length()));
+		}
+	}
+}
+
 int __cdecl main(void)
 {
 	int init_count = 0;
 	int start_count = 0;
 	int exit_flag = 0;
 	char *send_p = "p";
+
+	////////// load server & client config
+	int client_num;
+	load_client_config("client_config.txt", &client_num);
 
 	////////// *STEP 1* initialize Winsock
 	WSADATA wsaData;
@@ -103,7 +144,7 @@ int __cdecl main(void)
 
 
 	////////// *STEP 4* Listening on a Socket
-	const int nMaxClients = 1;
+	const int nMaxClients = client_num;
 	iResult = listen(ServerSocket, nMaxClients);
 	if (iResult == SOCKET_ERROR) {
 		printf("listen failed with error: %d\n", WSAGetLastError());
